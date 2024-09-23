@@ -1,6 +1,7 @@
 """Settings for units package."""
 
 from functools import lru_cache
+from typing import Optional
 
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -9,11 +10,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Settings for units package."""
 
-    #API_KEY: SecretStr
-    #DATABASE_URL: SecretStr
-    SENTRY_DSN: SecretStr = SecretStr("")
-
-    HOST_IP: str = "0.0.0.0"
+    UNITS_SENTRY_DSN: Optional[SecretStr] = SecretStr("")
+    UNITS_SPARQL_URL: Optional[str] = "https://fuseki.d-d-s.ch/skosmos/query"
+    UNITS_VOCAB_PREFIX: Optional[str] = "https://vocab.sentier.dev/"
+    UNITS_HOST_IP: str = "0.0.0.0"
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
