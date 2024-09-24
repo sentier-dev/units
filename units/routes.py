@@ -54,8 +54,9 @@ async def get_concept_data(
     language code, with a `en` language code, with a `en_GB` language code, but not a `jp` code.
 
     """
-    qk = get_qk_for_iri(iri)
-    if not qk:
+    try:
+        qk = get_qk_for_iri(iri)
+    except KeyError:
         raise HTTPException(status_code=404, detail="Unit IRI not found")
 
     result = get_all_data_for_qk_iri(

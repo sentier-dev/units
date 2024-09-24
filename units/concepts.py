@@ -49,8 +49,12 @@ WHERE {{
 
     logger.debug("Executing query %s", QUERY)
     response = httpx.post(settings.SPARQL_URL, data={"query": QUERY}).json()
+    response.raise_for_status()
     logger.info(f"Retrieved {len(response)} quantity kind results for iri {iri}")
-    return response[0]["qk"] if response else None
+
+    if response is None:
+        raise KeyError
+    return response[0]["qk"]
 
 
 def get_all_data_for_qk_iri(
@@ -80,6 +84,7 @@ where {{
         response = httpx.post(settings.SPARQL_URL, data={"query": QUERY}).json()[
             "results"
         ]["bindings"]
+        response.raise_for_status()
         logger.info(
             "Retrieved %s results for quantity kind %s in graph %s",
             len(response),
