@@ -32,7 +32,7 @@ def language_filter(o: dict, lang: str) -> dict:
 def get_qk_for_iri(iri: str) -> str | None:
     """Get the QUDT quantity key for a given unit IRI."""
     settings = get_settings()
-    logger.debug("Using sparql endpoint url %s", settings.UNITS_SPARQL_URL)
+    logger.debug("Using sparql endpoint url %s", settings.SPARQL_URL)
 
     QUERY = f"""
 PREFIX qudt: <http://qudt.org/schema/qudt/>
@@ -40,15 +40,15 @@ PREFIX qudt: <http://qudt.org/schema/qudt/>
 JSON {{
     "this is ignored anyway": ?qk
 }}
-FROM <{settings.UNITS_VOCAB_PREFIX}qudt/>
-FROM <{settings.UNITS_VOCAB_PREFIX}simapro/>
+FROM <{settings.VOCAB_PREFIX}qudt/>
+FROM <{settings.VOCAB_PREFIX}simapro/>
 WHERE {{
     <{iri}> qudt:hasQuantityKind ?qk .
 }}
     """
 
     logger.debug("Executing query %s", QUERY)
-    response = httpx.post(settings.UNITS_SPARQL_URL, data={"query": QUERY}).json()
+    response = httpx.post(settings.SPARQL_URL, data={"query": QUERY}).json()
     logger.info(f"Retrieved {len(response)} quantity kind results for iri {iri}")
     return response[0]["qk"] if response else None
 
@@ -61,7 +61,7 @@ def get_all_data_for_qk_iri(
 ) -> dict:
     """Get all data for a given quantity kind IRI."""
     settings = get_settings()
-    logger.debug("Using sparql endpoint url %s", settings.UNITS_SPARQL_URL)
+    logger.debug("Using sparql endpoint url %s", settings.SPARQL_URL)
 
     results = []
 
@@ -70,7 +70,7 @@ def get_all_data_for_qk_iri(
 PREFIX qudt: <http://qudt.org/schema/qudt/>
 
 SELECT ?s ?p ?o
-FROM <{settings.UNITS_VOCAB_PREFIX}{graph_namespace}/>
+FROM <{settings.VOCAB_PREFIX}{graph_namespace}/>
 where {{
     ?s ?p ?o .
     ?s qudt:hasQuantityKind <{iri}>
@@ -78,14 +78,14 @@ where {{
         """
 
         logger.debug("Executing query %s", QUERY)
-        response = httpx.post(settings.UNITS_SPARQL_URL, data={"query": QUERY}).json()[
+        response = httpx.post(settings.SPARQL_URL, data={"query": QUERY}).json()[
             "results"
         ]["bindings"]
         logger.info(
             "Retrieved %s results for quantity kind %s in graph %s",
             len(response),
             iri,
-            settings.UNITS_VOCAB_PREFIX + graph_namespace,
+            settings.VOCAB_PREFIX + graph_namespace,
         )
         results.extend(response)
 
