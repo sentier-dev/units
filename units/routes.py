@@ -54,11 +54,6 @@ async def get_concept_data(
     language code, with a `en` language code, with a `en_GB` language code, but not a `jp` code.
 
     """
-    if lang and not len(lang) == 2:
-        raise HTTPException(
-            status_code=500, detail="Lang string must be exactly two letters long"
-        )
-
     qk = get_qk_for_iri(iri)
     if not qk:
         raise HTTPException(status_code=404, detail="Unit IRI not found")

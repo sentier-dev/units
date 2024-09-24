@@ -63,9 +63,6 @@ def get_all_data_for_qk_iri(
     settings = get_settings()
     logger.debug("Using sparql endpoint url %s", settings.UNITS_SPARQL_URL)
 
-    if lang and not len(lang) == 2:
-        raise ValueError("Language code must be exactly two letters long")
-
     results = []
 
     for graph_namespace in graph_namespaces:
