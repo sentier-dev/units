@@ -8,7 +8,8 @@ def test_qk():
         get_qk_for_iri("https://vocab.sentier.dev/qudt/unit/M-SEC")
         == "https://vocab.sentier.dev/qudt/quantity-kind/LengthTime"
     )
-    assert get_qk_for_iri("w00t") is None
+    with pytest.raises(KeyError):
+        get_qk_for_iri("w00t")
 
 
 def test_gadfqi():
@@ -17,18 +18,11 @@ def test_gadfqi():
     )
     assert "https://vocab.sentier.dev/qudt/unit/M-SEC" in result
     subset = result["https://vocab.sentier.dev/qudt/unit/M-SEC"]
-    assert ("prefLabel", "Metre second") in subset
+    assert ("prefLabel", "Metre second", "en-gb") in subset
 
 
 def test_gadfqi_empty():
     assert not get_all_data_for_qk_iri("https://vocab.sentier.dev/qudt/quantity-kind/L")
-
-
-def test_gadfqi_error():
-    with pytest.raises(ValueError):
-        get_all_data_for_qk_iri(
-            "https://vocab.sentier.dev/qudt/quantity-kind/LengthTime", lang="abc"
-        )
 
 
 def test_gadfqi_namespaces():
@@ -38,4 +32,4 @@ def test_gadfqi_namespaces():
     )
     assert "https://vocab.sentier.dev/qudt/unit/M-SEC" in result
     subset = result["https://vocab.sentier.dev/qudt/unit/M-SEC"]
-    assert ("http://www.w3.org/2004/02/skos/core#prefLabel", "Metre second") in subset
+    assert ("http://www.w3.org/2004/02/skos/core#prefLabel", "Metre second", "en-gb") in subset

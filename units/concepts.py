@@ -23,11 +23,27 @@ def remove_graph_namespaces(s: str) -> str:
     return s
 
 
-def language_filter(o: dict, lang: str) -> dict:
+def language_filter(o: dict, lang: str | None) -> bool:
     """Check if given element has the correct language, if one is given"""
-    if "xml:lang" in o and lang not in o["xml:lang"].lower():
+    if not lang:
+        return True
+    if "xml:lang" in o and o["xml:lang"].lower().replace("_", "-")[: len(lang)] != lang:
         return False
     return True
+
+
+def reformat_predicate_object(obj: dict, remove_namespaces: bool = True) -> tuple:
+    """Reformat the predicate and object to make them simpler and more standardized."""
+    if remove_namespaces:
+        formatted = (
+            remove_graph_namespaces(obj["p"]["value"]),
+            remove_graph_namespaces(obj["o"]["value"]),
+        )
+    else:
+        formatted = (obj["p"]["value"], obj["o"]["value"])
+    if "xml:lang" in obj["o"]:
+        return formatted + (obj["o"]["xml:lang"].lower(),)
+    return formatted
 
 
 def get_qk_for_iri(iri: str) -> str | None:
@@ -48,11 +64,12 @@ WHERE {{
     """
 
     logger.debug("Executing query %s", QUERY)
-    response = httpx.post(settings.SPARQL_URL, data={"query": QUERY}).json()
+    response = httpx.post(settings.SPARQL_URL, data={"query": QUERY})
     response.raise_for_status()
+    response = response.json()
     logger.info(f"Retrieved {len(response)} quantity kind results for iri {iri}")
 
-    if response is None:
+    if not response:
         raise KeyError
     return response[0]["qk"]
 
@@ -81,10 +98,9 @@ where {{
         """
 
         logger.debug("Executing query %s", QUERY)
-        response = httpx.post(settings.SPARQL_URL, data={"query": QUERY}).json()[
-            "results"
-        ]["bindings"]
+        response = httpx.post(settings.SPARQL_URL, data={"query": QUERY})
         response.raise_for_status()
+        response = response.json()["results"]["bindings"]
         logger.info(
             "Retrieved %s results for quantity kind %s in graph %s",
             len(response),
@@ -93,21 +109,13 @@ where {{
         )
         results.extend(response)
 
-    if remove_namespaces:
-        formatter = remove_graph_namespaces
-    else:
-        formatter = lambda x: x
-
-    if lang:
-        o_checker = partial(language_filter, lang=lang.lower())
-    else:
-        o_checker = lambda _: True
+    lang_checker = partial(language_filter, lang=lang.lower() if lang else None)
 
     return {
         key: [
-            (formatter(obj["p"]["value"]), formatter(obj["o"]["value"]))
+            reformat_predicate_object(obj, remove_namespaces=remove_namespaces)
             for obj in group
-            if o_checker(obj["o"])
+            if lang_checker(obj["o"])
         ]
         for key, group in groupby(results, key=lambda x: x["s"]["value"])
     }
