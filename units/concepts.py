@@ -6,6 +6,7 @@ import httpx
 
 from units.settings import get_settings
 
+settings = get_settings()
 logger = structlog.get_logger()
 
 
@@ -31,7 +32,6 @@ def language_filter(o: dict, lang: str) -> dict:
 
 def get_qk_for_iri(iri: str) -> str | None:
     """Get the QUDT quantity key for a given unit IRI."""
-    settings = get_settings()
     logger.debug("Using sparql endpoint url %s", settings.SPARQL_URL)
 
     QUERY = f"""
@@ -60,7 +60,6 @@ def get_all_data_for_qk_iri(
     graph_namespaces: list[str] = ["qudt", "simapro"],
 ) -> dict:
     """Get all data for a given quantity kind IRI."""
-    settings = get_settings()
     logger.debug("Using sparql endpoint url %s", settings.SPARQL_URL)
 
     results = []
