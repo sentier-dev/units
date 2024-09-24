@@ -19,7 +19,7 @@ def create_app() -> FastAPI:
         FastAPI: the application object
     """
     sentry_sdk.init(
-        dsn=get_settings().UNITS_SENTRY_DSN.get_secret_value(),
+        dsn=get_settings().SENTRY_DSN.get_secret_value(),
         # Set traces_sample_rate to 1.0 to capture 100%
         # of transactions for performance monitoring.
         traces_sample_rate=1.0,
@@ -57,5 +57,5 @@ if __name__ == "__main__":
     uvicorn.run(
         "units.main:create_app",
         reload=args.f_reload,
-        host=get_settings().UNITS_HOST_IP,
+        host=get_settings().HOST_IP,
     )

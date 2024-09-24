@@ -6,6 +6,7 @@ import httpx
 
 from units.settings import get_settings
 
+settings = get_settings()
 logger = structlog.get_logger()
 
 
@@ -22,17 +23,32 @@ def remove_graph_namespaces(s: str) -> str:
     return s
 
 
-def language_filter(o: dict, lang: str) -> dict:
+def language_filter(o: dict, lang: str | None) -> bool:
     """Check if given element has the correct language, if one is given"""
-    if "xml:lang" in o and lang not in o["xml:lang"].lower():
+    if not lang:
+        return True
+    if "xml:lang" in o and o["xml:lang"].lower().replace("_", "-")[: len(lang)] != lang:
         return False
     return True
 
 
+def reformat_predicate_object(obj: dict, remove_namespaces: bool = True) -> tuple:
+    """Reformat the predicate and object to make them simpler and more standardized."""
+    if remove_namespaces:
+        formatted = (
+            remove_graph_namespaces(obj["p"]["value"]),
+            remove_graph_namespaces(obj["o"]["value"]),
+        )
+    else:
+        formatted = (obj["p"]["value"], obj["o"]["value"])
+    if "xml:lang" in obj["o"]:
+        return formatted + (obj["o"]["xml:lang"].lower(),)
+    return formatted
+
+
 def get_qk_for_iri(iri: str) -> str | None:
     """Get the QUDT quantity key for a given unit IRI."""
-    settings = get_settings()
-    logger.debug("Using sparql endpoint url %s", settings.UNITS_SPARQL_URL)
+    logger.debug("Using sparql endpoint url %s", settings.SPARQL_URL)
 
     QUERY = f"""
 PREFIX qudt: <http://qudt.org/schema/qudt/>
@@ -40,17 +56,22 @@ PREFIX qudt: <http://qudt.org/schema/qudt/>
 JSON {{
     "this is ignored anyway": ?qk
 }}
-FROM <{settings.UNITS_VOCAB_PREFIX}qudt/>
-FROM <{settings.UNITS_VOCAB_PREFIX}simapro/>
+FROM <{settings.VOCAB_PREFIX}qudt/>
+FROM <{settings.VOCAB_PREFIX}simapro/>
 WHERE {{
     <{iri}> qudt:hasQuantityKind ?qk .
 }}
     """
 
     logger.debug("Executing query %s", QUERY)
-    response = httpx.post(settings.UNITS_SPARQL_URL, data={"query": QUERY}).json()
+    response = httpx.post(settings.SPARQL_URL, data={"query": QUERY})
+    response.raise_for_status()
+    response = response.json()
     logger.info(f"Retrieved {len(response)} quantity kind results for iri {iri}")
-    return response[0]["qk"] if response else None
+
+    if not response:
+        raise KeyError
+    return response[0]["qk"]
 
 
 def get_all_data_for_qk_iri(
@@ -60,11 +81,7 @@ def get_all_data_for_qk_iri(
     graph_namespaces: list[str] = ["qudt", "simapro"],
 ) -> dict:
     """Get all data for a given quantity kind IRI."""
-    settings = get_settings()
-    logger.debug("Using sparql endpoint url %s", settings.UNITS_SPARQL_URL)
-
-    if lang and not len(lang) == 2:
-        raise ValueError("Language code must be exactly two letters long")
+    logger.debug("Using sparql endpoint url %s", settings.SPARQL_URL)
 
     results = []
 
@@ -73,7 +90,7 @@ def get_all_data_for_qk_iri(
 PREFIX qudt: <http://qudt.org/schema/qudt/>
 
 SELECT ?s ?p ?o
-FROM <{settings.UNITS_VOCAB_PREFIX}{graph_namespace}/>
+FROM <{settings.VOCAB_PREFIX}{graph_namespace}/>
 where {{
     ?s ?p ?o .
     ?s qudt:hasQuantityKind <{iri}>
@@ -81,32 +98,24 @@ where {{
         """
 
         logger.debug("Executing query %s", QUERY)
-        response = httpx.post(settings.UNITS_SPARQL_URL, data={"query": QUERY}).json()[
-            "results"
-        ]["bindings"]
+        response = httpx.post(settings.SPARQL_URL, data={"query": QUERY})
+        response.raise_for_status()
+        response = response.json()["results"]["bindings"]
         logger.info(
             "Retrieved %s results for quantity kind %s in graph %s",
             len(response),
             iri,
-            settings.UNITS_VOCAB_PREFIX + graph_namespace,
+            settings.VOCAB_PREFIX + graph_namespace,
         )
         results.extend(response)
 
-    if remove_namespaces:
-        formatter = remove_graph_namespaces
-    else:
-        formatter = lambda x: x
-
-    if lang:
-        o_checker = partial(language_filter, lang=lang.lower())
-    else:
-        o_checker = lambda _: True
+    lang_checker = partial(language_filter, lang=lang.lower() if lang else None)
 
     return {
         key: [
-            (formatter(obj["p"]["value"]), formatter(obj["o"]["value"]))
+            reformat_predicate_object(obj, remove_namespaces=remove_namespaces)
             for obj in group
-            if o_checker(obj["o"])
+            if lang_checker(obj["o"])
         ]
         for key, group in groupby(results, key=lambda x: x["s"]["value"])
     }
