@@ -1,8 +1,10 @@
 from functools import partial
 from itertools import groupby
+from typing import Optional
 
-import structlog
 import httpx
+import structlog
+from pydantic import BaseModel
 
 from units.settings import get_settings
 
@@ -112,10 +114,27 @@ where {{
     lang_checker = partial(language_filter, lang=lang.lower() if lang else None)
 
     return {
-        key: [
-            reformat_predicate_object(obj, remove_namespaces=remove_namespaces)
-            for obj in group
-            if lang_checker(obj["o"])
-        ]
+        key: {
+            (
+                remove_graph_namespaces(obj_key) if remove_namespaces else obj_key
+            ): format_objects(obj, lang)
+            for obj_key, obj in groupby(group, key=lambda x: x["p"]["value"])
+        }
         for key, group in groupby(results, key=lambda x: x["s"]["value"])
     }
+
+
+def format_objects(obj, lang: Optional[str] = None):
+    l = list(
+        map(
+            lambda x: x["o"]["value"],
+            filter(
+                lambda x: "xml:lang" not in x["o"] or language_filter(x["o"], lang),
+                obj,
+            ),
+        )
+    )
+    if len(l) == 0:
+        return None
+    return l if len(l) > 1 else l[0]
+

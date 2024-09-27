@@ -6,7 +6,6 @@ import sentry_sdk
 import uvicorn
 from fastapi import FastAPI
 from fastapi_versioning import VersionedFastAPI
-
 from starlette.middleware.cors import CORSMiddleware
 
 from units.routes import router
