@@ -41,6 +41,9 @@ def test_get_quantity_kinds():
     )
     assert "https://vocab.sentier.dev/qudt/quantity-kind/Acceleration" in result
     subset = result["https://vocab.sentier.dev/qudt/quantity-kind/Acceleration"]
-    print(subset)
     assert subset["informativeReference"] == "http://en.wikipedia.org/wiki/Acceleration"
     assert ("accélération", "fr") in subset["prefLabel"]
+    assert len(subset["prefLabel"]) > 1
+
+    subset = result["https://vocab.sentier.dev/qudt/quantity-kind/Enthalpy"]
+    assert len(subset["prefLabel"]) > 1
