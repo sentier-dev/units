@@ -90,9 +90,7 @@ async def get_quantity_kinds_data(
     language code, with a `en` language code, with a `en_GB` language code, but not a `jp` code.
 
     """
-    result = get_quantity_kinds(
-        lang=lang, remove_namespaces=remove_namespaces
-    )
+    result = get_quantity_kinds(lang=lang, remove_namespaces=remove_namespaces)
     return JSONResponse(content=result)
 
 

@@ -35,7 +35,9 @@ def language_filter(o: dict, lang: str | None) -> bool:
     return True
 
 
-def reformat_predicate_object(obj: dict, remove_namespaces: bool = True) -> tuple:
+def reformat_predicate_object(
+    obj: dict, remove_namespaces: bool = True, strip_lang_codes: bool = False
+) -> tuple:
     """Reformat the predicate and object to make them simpler and more standardized."""
     if remove_namespaces:
         formatted = (
@@ -44,7 +46,7 @@ def reformat_predicate_object(obj: dict, remove_namespaces: bool = True) -> tupl
         )
     else:
         formatted = (obj["p"]["value"], obj["o"]["value"])
-    if "xml:lang" in obj["o"]:
+    if "xml:lang" in obj["o"] and not strip_lang_codes:
         return formatted + (obj["o"]["xml:lang"].lower(),)
     return formatted
 
@@ -109,7 +111,9 @@ where {{
     data = [
         (
             obj["s"]["value"],
-            reformat_predicate_object(obj, remove_namespaces=remove_namespaces),
+            reformat_predicate_object(
+                obj, remove_namespaces=remove_namespaces, strip_lang_codes=True
+            ),
         )
         for obj in response.json()["results"]["bindings"]
         if lang_checker(obj["o"])
@@ -195,4 +199,3 @@ def format_objects(obj, lang: Optional[str] = None):
     if len(l) == 0:
         return None
     return l if len(l) > 1 else l[0]
-
