@@ -1,6 +1,6 @@
 import pytest
 
-from units.concepts import get_all_data_for_qk_iri, get_qk_for_iri
+from units.concepts import get_all_data_for_qk_iri, get_qk_for_iri, get_quantity_kinds
 
 
 def test_qk():
@@ -33,3 +33,17 @@ def test_gadfqi_namespaces():
     assert "https://vocab.sentier.dev/qudt/unit/M-SEC" in result
     subset = result["https://vocab.sentier.dev/qudt/unit/M-SEC"]
     assert ("http://www.w3.org/2004/02/skos/core#prefLabel", "Metre second", "en-gb") in subset
+
+
+def test_get_quantity_kinds():
+    result = get_quantity_kinds(
+        remove_namespaces=True,
+    )
+    assert "https://vocab.sentier.dev/qudt/quantity-kind/Acceleration" in result
+    subset = result["https://vocab.sentier.dev/qudt/quantity-kind/Acceleration"]
+    assert subset["informativeReference"] == "http://en.wikipedia.org/wiki/Acceleration"
+    assert ("accélération", "fr") in subset["prefLabel"]
+    assert len(subset["prefLabel"]) > 1
+
+    subset = result["https://vocab.sentier.dev/qudt/quantity-kind/Enthalpy"]
+    assert len(subset["prefLabel"]) > 1
