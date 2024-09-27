@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi_versioning import version
 
+from units.concepts import get_all_data_for_qk_iri, get_qk_for_iri
 from units.schema import VersionResponse
-from units.concepts import get_qk_for_iri, get_all_data_for_qk_iri
 
 router = APIRouter()
 
