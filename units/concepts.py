@@ -1,3 +1,4 @@
+from collections import defaultdict
 from functools import partial
 from itertools import groupby
 from typing import Optional
@@ -74,6 +75,63 @@ WHERE {{
     if not response:
         raise KeyError
     return response[0]["qk"]
+
+
+def get_quantity_kinds(
+    lang: str | None = None,
+    remove_namespaces: bool = True,
+) -> dict:
+    """Get the all QUDT quantity kinds."""
+    logger.debug("Using sparql endpoint url %s", settings.SPARQL_URL)
+
+    QUERY = f"""
+PREFIX qudt: <http://qudt.org/schema/qudt/>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+
+SELECT ?s ?p ?o
+FROM <{settings.VOCAB_PREFIX}qudt/>
+where {{
+    ?s ?p ?o
+    FILTER (
+      contains(STR(?s), "https://vocab.sentier.dev/qudt/quantity-kind/")
+    )
+    FILTER (
+        ?p IN (skos:prefLabel, skos:altLabel, skos:exactMatch, skos:related, skos:definition, qudt:informativeReference)
+    )
+}}
+    """
+
+    logger.debug("Executing query %s", QUERY)
+    response = httpx.post(settings.SPARQL_URL, data={"query": QUERY})
+    response.raise_for_status()
+
+    lang_checker = partial(language_filter, lang=lang.lower() if lang else None)
+    data = [
+        (
+            obj["s"]["value"],
+            reformat_predicate_object(obj, remove_namespaces=remove_namespaces),
+        )
+        for obj in response.json()["results"]["bindings"]
+        if lang_checker(obj["o"])
+    ]
+    logger.info(f"Retrieved {len(data)} quantity kinds")
+
+    results = {}
+
+    # Sorry this is shit but I lost 30 mins fighting with groupby
+    # and am too burned out to find a better way...
+    for qk, elem in data:
+        if qk not in results:
+            results[qk] = defaultdict(list)
+        if len(elem) == 2:
+            results[qk][elem[0]].append(elem[1])
+        else:
+            results[qk][elem[0]].append(elem[1:])
+
+    return {
+        key: {a: (b[0] if len(b) == 1 else b) for a, b in value.items()}
+        for key, value in results.items()
+    }
 
 
 def get_all_data_for_qk_iri(
